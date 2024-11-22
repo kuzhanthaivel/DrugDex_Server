@@ -1,0 +1,25 @@
+# Node.js
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# React Native
+android/build/
+ios/Pods/
+ios/build/
+.expo/
+.vscode/
+
+# Mac OS
+.DS_Store
+
+# Other OS specific files
+Thumbs.db
+.Thumbs
+
+# Logs
+*.log
+
+# Build directories
+dist/
+build/

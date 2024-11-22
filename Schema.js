@@ -26,7 +26,7 @@ const adminSchema = new mongoose.Schema({
 
 // Drug Data Schema
 const drugDataSchema = new mongoose.Schema({
-    drugName: { type: String, required: true },
+    drugName: { type: String, required: true, unique: true},
     drugPhoto: { type: Buffer, required: true },
     description: { type: String, required: true },
     uses: { type: [String] },
