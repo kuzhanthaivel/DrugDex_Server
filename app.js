@@ -2,7 +2,6 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const multer = require('multer');
 const { User, Admin, DrugData } = require('./Schema');
 
 
@@ -14,8 +13,6 @@ app.use(cors());
 
 
 const mongoUrl = process.env.MONGO_URL; 
-const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
 
 
 
@@ -35,50 +32,42 @@ app.listen(5001, () => {
     console.log('Server is running on port 5001');
 });
 
-app.post('/upload', upload.single('drugPhoto'), async (req, res) => {
+app.post('/upload', async (req, res) => {
     try {
-      const { drugName, description, uses, indications, sideEffects, warnings } = req.body;
-  
-      // Validate drug photo
-      if (!req.file) {
-        return res.status(400).json({
-          message: 'Drug photo is required.',
+        const { drugName, description, uses, indications, sideEffects, warnings } = req.body;
+
+        // Check if the drug name already exists
+        const existingDrug = await DrugData.findOne({ drugName });
+        if (existingDrug) {
+            return res.status(409).json({
+                message: 'A drug with this name already exists. Please use a unique name.',
+            });
+        }
+
+        // Save new drug data
+        const drug = new DrugData({
+            drugName,
+            description,
+            uses: JSON.parse(uses || '[]'),
+            indications: JSON.parse(indications || '[]'),
+            sideEffects: JSON.parse(sideEffects || '[]'),
+            warnings: JSON.parse(warnings || '[]'),
         });
-      }
-  
-      // Check if the drug name already exists
-      const existingDrug = await DrugData.findOne({ drugName });
-      if (existingDrug) {
-        return res.status(409).json({
-          message: 'A drug with this name already exists. Please use a unique name.',
+
+        await drug.save();
+        res.status(201).json({
+            message: 'Drug uploaded successfully',
+            drug,
         });
-      }
-  
-      // Save new drug data
-      const drug = new DrugData({
-        drugName,
-        drugPhoto: req.file.buffer,
-        description,
-        uses: JSON.parse(uses || '[]'),
-        indications: JSON.parse(indications || '[]'),
-        sideEffects: JSON.parse(sideEffects || '[]'),
-        warnings: JSON.parse(warnings || '[]'),
-      });
-  
-      await drug.save();
-      res.status(201).json({
-        message: 'Drug uploaded successfully',
-        drug,
-      });
     } catch (error) {
-      console.error('Error saving drug:', error.message);
-      res.status(500).json({
-        message: 'Failed to upload drug',
-        error: error.message,
-      });
+        console.error('Error saving drug:', error.message);
+        res.status(500).json({
+            message: 'Failed to upload drug',
+            error: error.message,
+        });
     }
-  });
-  
+});
+
   
 app.post('/register-user', async (req, res) => {
     const { username, email, password } = req.body;
@@ -402,16 +391,9 @@ app.get('/search-drug', async (req, res) => {
             });
         }
 
-        // Convert the binary photo to Base64 if it exists
-        let drugPhotoBase64 = null;
-        if (DrugData.drugPhoto && DrugData.drugPhoto.base64) {
-            drugPhotoBase64 = `data:image/jpeg;base64,${DrugData.drugPhoto.base64}`;
-        }
-
         res.status(200).json({
             drug: {
                 drugName: drug.drugName,
-                drugPhoto: drugPhotoBase64,
                 description: drug.description,
                 uses: drug.uses,
                 indications: drug.indications,
@@ -427,3 +409,6 @@ app.get('/search-drug', async (req, res) => {
         });
     }
 });
+
+
+

@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-
 // User Schema
 const userSchema = new mongoose.Schema({
     username: { type: String, required: true },
@@ -11,7 +10,6 @@ const userSchema = new mongoose.Schema({
         }
     ]
 });
-
 // Admin Schema
 const adminSchema = new mongoose.Schema({
     username: { type: String, required: true },
@@ -23,18 +21,15 @@ const adminSchema = new mongoose.Schema({
     phoneNumber: { type: Number, required: true },
     bookmarks: { type: [String] }
 });
-
 // Drug Data Schema
 const drugDataSchema = new mongoose.Schema({
     drugName: { type: String, required: true, unique: true},
-    drugPhoto: { type: Buffer, required: true },
     description: { type: String, required: true },
     uses: { type: [String] },
     indications: { type: [String] },
     sideEffects: { type: [String] },
     warnings: { type: [String] }
 });
-
 // Export all models
 module.exports = {
     User: mongoose.model('User', userSchema),
