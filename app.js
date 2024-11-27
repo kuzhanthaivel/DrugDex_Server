@@ -241,10 +241,7 @@ app.post('/check-bookmark', async (req, res) => {
             });
         }
         // Check if the drug is in the user's bookmarks
-        const isBookmarked = user.bookmarks.some(
-            (bookmark) => bookmark.drugName === drugName
-        );
-
+    const isBookmarked = user.bookmarks.includes(drugName);
         if (isBookmarked) {
             return res.status(200).json({
                 message: 'Drug is bookmarked.',
@@ -347,7 +344,7 @@ app.put('/edit-password', async (req, res) => {
 });
 
 app.get('/search-drug', async (req, res) => {
-    const { drugName } = req.query;
+    const { drugName, username } = req.query;
 
     if (!drugName) {
         return res.status(400).json({
@@ -402,4 +399,3 @@ app.get('/get-user', async (req, res) => {
         res.status(500).json({ message: 'Error fetching user details', error: error.message });
     }
 });
-
