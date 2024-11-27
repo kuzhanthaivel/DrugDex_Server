@@ -4,17 +4,12 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const { User, Admin, DrugData } = require('./Schema');
 
-
-
 dotenv.config();
 const app = express();
 app.use(express.json());
 app.use(cors());
 
-
 const mongoUrl = process.env.MONGO_URL; 
-
-
 
 mongoose.connect(mongoUrl).then(() => {
     console.log("MongoDB successfully connected");
@@ -22,11 +17,9 @@ mongoose.connect(mongoUrl).then(() => {
     console.error("Failed to connect to MongoDB", e);
 });
 
-
 app.get("/", (req, res) => {
     res.send("Hello, World!");
 });
-
 
 app.listen(5001, () => {
     console.log('Server is running on port 5001');
@@ -68,7 +61,6 @@ app.post('/upload', async (req, res) => {
     }
 });
 
-  
 app.post('/register-user', async (req, res) => {
     const { username, email, password } = req.body;
 
@@ -112,40 +104,37 @@ app.post('/register-user', async (req, res) => {
     }
 });
 
-
 app.post('/login-user', async (req, res) => {
-    const { email, password } = req.body;
+    const { username, password } = req.body;
 
-    // Validate if both email and password are provided
-    if (!email || !password) {
+
+    if (!username || !password) {
         return res.status(400).json({
-            message: 'Both email and password are required.',
+            message: 'Both username and password are required.',
         });
     }
 
     try {
-        // Find the user by email
-        const existingUser = await User.findOne({ email });
+
+        const existingUser = await User.findOne({ username });
         if (!existingUser) {
             return res.status(404).json({
                 message: 'User not found. Please register first.',
             });
         }
-
-        // Check if the provided password matches (Note: No bcrypt used here)
         if (existingUser.password !== password) {
             return res.status(401).json({
                 message: 'Invalid password. Please try again.',
             });
         }
 
-        // Successful login, send back the user details
+
         res.status(200).json({
             message: 'Login successful',
             user: {
                 username: existingUser.username,
                 email: existingUser.email,
-                password: existingUser.password, // Not recommended for production
+              password: existingUser.password, 
             },
         });
     } catch (error) {
@@ -156,57 +145,6 @@ app.post('/login-user', async (req, res) => {
         });
     }
 });
-
-
-app.post('/add-bookmark', async (req, res) => {
-    const { username, drugName } = req.body;
-  
-    // Validate request data
-    if (!username || !drugName) {
-        return res.status(400).json({
-            message: 'Both username and drugName are required.',
-        });
-    }
-  
-    try {
-        // Find user by username
-        const user = await User.findOne({ username });
-  
-        if (!user) {
-            return res.status(404).json({
-                message: 'User not found.',
-            });
-        }
-  
-        // Check if the drug is already bookmarked
-        const isBookmarked = user.bookmarks.some(
-            (bookmark) => bookmark.drugName === drugName
-        );
-  
-        if (isBookmarked) {
-            return res.status(409).json({
-                message: 'This drug is already bookmarked.',
-            });
-        }
-  
-        // Add new bookmark
-        user.bookmarks.push({ drugName });
-        await user.save();
-  
-        res.status(200).json({
-            message: 'Drug bookmarked successfully.',
-            bookmarks: user.bookmarks,
-        });
-    } catch (error) {
-        console.error('Error adding bookmark:', error);
-        res.status(500).json({
-            message: 'Failed to add bookmark.',
-            error: error.message,
-        });
-    }
-  });
-  
-
 
 app.get('/show-bookmarks/:username', async (req, res) => {
     const { username } = req.params;
@@ -236,19 +174,65 @@ app.get('/show-bookmarks/:username', async (req, res) => {
     }
 });
 
+app.post('/add-bookmark', async (req, res) => {
+    const { username, drugName } = req.body;
+
+    if (!username || !drugName) {
+        return res.status(400).json({ error: "Username and drugName are required." });
+    }
+
+    try {
+        // Assuming you're using MongoDB with Mongoose
+        const user = await User.findOne({ username });
+        if (!user) {
+            return res.status(404).json({ error: "User not found." });
+        }
+
+        // Add bookmark if not already bookmarked
+        if (!user.bookmarks.includes(drugName)) {
+            user.bookmarks.push(drugName);
+            await user.save();
+        }
+
+        res.status(200).json({ message: "Bookmark added successfully.", isBookmarked: true });
+    } catch (error) {
+        console.error("Error adding bookmark:", error);
+        res.status(500).json({ error: "Internal server error." });
+    }
+});
 
 app.post('/remove-bookmark', async (req, res) => {
     const { username, drugName } = req.body;
 
-    // Validate request data
+    if (!username || !drugName) {
+        return res.status(400).json({ error: "Username and drugName are required." });
+    }
+
+    try {
+        const user = await User.findOne({ username });
+        if (!user) {
+            return res.status(404).json({ error: "User not found." });
+        }
+
+        // Remove bookmark
+        user.bookmarks = user.bookmarks.filter((bookmark) => bookmark !== drugName);
+        await user.save();
+
+        res.status(200).json({ message: "Bookmark removed successfully.", isBookmarked: false });
+    } catch (error) {
+        console.error("Error removing bookmark:", error);
+        res.status(500).json({ error: "Internal server error." });
+    }
+});
+
+app.post('/check-bookmark', async (req, res) => {
+    const { username, drugName } = req.body;
     if (!username || !drugName) {
         return res.status(400).json({
             message: 'Both username and drugName are required.',
         });
     }
-
     try {
-        // Find user by username
         const user = await User.findOne({ username });
 
         if (!user) {
@@ -256,36 +240,30 @@ app.post('/remove-bookmark', async (req, res) => {
                 message: 'User not found.',
             });
         }
-
-        // Check if the drug is bookmarked
-        const bookmarkIndex = user.bookmarks.findIndex(
+        // Check if the drug is in the user's bookmarks
+        const isBookmarked = user.bookmarks.some(
             (bookmark) => bookmark.drugName === drugName
         );
 
-        if (bookmarkIndex === -1) {
-            return res.status(404).json({
-                message: 'This drug is not bookmarked.',
+        if (isBookmarked) {
+            return res.status(200).json({
+                message: 'Drug is bookmarked.',
+                isBookmarked: true,
+            });
+        } else {
+            return res.status(200).json({
+                message: 'Drug is not bookmarked.',
+                isBookmarked: false,
             });
         }
-
-        // Remove the bookmark
-        user.bookmarks.splice(bookmarkIndex, 1);
-        await user.save();
-
-        res.status(200).json({
-            message: 'Bookmark removed successfully.',
-            bookmarks: user.bookmarks,
-        });
     } catch (error) {
-        console.error('Error removing bookmark:', error);
+        console.error('Error checking bookmark:', error);
         res.status(500).json({
-            message: 'Failed to remove bookmark.',
+            message: 'Failed to check bookmark.',
             error: error.message,
         });
     }
 });
-
-
 
 app.put('/edit-username', async (req, res) => {
     const { currentUsername, newUsername } = req.body;
@@ -332,8 +310,6 @@ app.put('/edit-username', async (req, res) => {
     }
 });
 
-
-
 app.put('/edit-password', async (req, res) => {
     const { username, newPassword } = req.body;
 
@@ -370,8 +346,6 @@ app.put('/edit-password', async (req, res) => {
     }
 });
 
-
-
 app.get('/search-drug', async (req, res) => {
     const { drugName } = req.query;
 
@@ -382,9 +356,7 @@ app.get('/search-drug', async (req, res) => {
     }
 
     try {
-        // Search for the drug by name
-        const drug = await DrugData.findOne({ drugName });
-
+        const drug = await DrugData.findOne({ drugName: { $regex: new RegExp(`^${drugName}$`, 'i') } });
         if (!drug) {
             return res.status(404).json({
                 message: 'Drug not found.',
@@ -410,5 +382,24 @@ app.get('/search-drug', async (req, res) => {
     }
 });
 
+app.get('/get-user', async (req, res) => {
+    const { username } = req.query;
 
+    if (!username) {
+        return res.status(400).json({ message: 'Username is required' });
+    }
+
+    try {
+        // Fetch user details based on the username
+        const user = await User.findOne({ username }).select('email password -_id'); // Select only email and password
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.status(200).json({ message: 'User details fetched successfully', data: user });
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching user details', error: error.message });
+    }
+});
 
